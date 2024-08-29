@@ -5,7 +5,7 @@
 # wrapper moves its arguments up by one register before the ecall.
 
 .globl put_int, put_char, put_str, alloc, quit, fail
-.globl file_open, file_read, file_write, file_close
+.globl file_open, file_read, file_write, file_close, print_matrix
 
 .text
 
@@ -86,4 +86,46 @@ file_close:
     mv a1 a0
     li a0 16
     ecall
+    ret
+
+# print_matrix(a0 = first element, a1 = rows, a2 = columns)
+# One line per row, values separated by single spaces.
+print_matrix:
+    addi sp sp -20
+    sw ra 0(sp)
+    sw s0 4(sp)
+    sw s1 8(sp)
+    sw s2 12(sp)
+    sw s3 16(sp)
+
+    mv s0 a0                # next element to print
+    mv s1 a1                # rows still to print
+    mv s2 a2                # values per row
+
+pm_row:
+    beqz s1 pm_done
+    mv s3 s2                # values left in this row
+pm_value:
+    beqz s3 pm_newline
+    lw a0 0(s0)
+    jal put_int
+    addi s0 s0 4
+    addi s3 s3 -1
+    beqz s3 pm_value        # no separator after the last value
+    li a0 ' '
+    jal put_char
+    j pm_value
+pm_newline:
+    li a0 '\n'
+    jal put_char
+    addi s1 s1 -1
+    j pm_row
+
+pm_done:
+    lw ra 0(sp)
+    lw s0 4(sp)
+    lw s1 8(sp)
+    lw s2 12(sp)
+    lw s3 16(sp)
+    addi sp sp 20
     ret
