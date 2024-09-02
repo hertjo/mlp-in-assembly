@@ -7,9 +7,9 @@
 #   4(rec)  columns
 #   8(rec)  address of the first element
 # The first eight bytes match the file header, so the header is read straight
-# into the record.
+# into the record and written straight out of it.
 
-.globl load_matrix
+.globl load_matrix, save_matrix
 
 .text
 
@@ -67,5 +67,53 @@ load_matrix:
     ret
 
 lm_error:
+    li a0 1
+    jal fail
+
+# save_matrix(a0 = path, a1 = record)
+# Writes the header and the elements of the matrix described by the record.
+# Any failed or short file operation ends the program with exit code 1.
+save_matrix:
+    addi sp sp -16
+    sw ra 0(sp)
+    sw s0 4(sp)
+    sw s1 8(sp)
+    sw s2 12(sp)
+
+    mv s1 a1                # record
+    li a1 1                 # open for writing
+    jal file_open
+    li t0 -1
+    beq a0 t0 sm_error
+    mv s0 a0                # descriptor
+
+    mv a0 s0                # header: the first two words of the record
+    mv a1 s1
+    li a2 2
+    jal file_write
+    li t0 2
+    bne a0 t0 sm_error
+
+    lw t0 0(s1)
+    lw t1 4(s1)
+    mul s2 t0 t1            # element count
+    mv a0 s0
+    lw a1 8(s1)
+    mv a2 s2
+    jal file_write
+    bne a0 s2 sm_error
+
+    mv a0 s0
+    jal file_close
+    bnez a0 sm_error
+
+    lw ra 0(sp)
+    lw s0 4(sp)
+    lw s1 8(sp)
+    lw s2 12(sp)
+    addi sp sp 16
+    ret
+
+sm_error:
     li a0 1
     jal fail
