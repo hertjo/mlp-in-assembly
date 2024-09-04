@@ -3,3 +3,4 @@
 
 # Venus simulator and local outputs
 *.jar
+tests/data/roundtrip.bin
