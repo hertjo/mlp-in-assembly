@@ -7,12 +7,15 @@
 # matmul(a0 = A, a1 = rows of A, a2 = columns of A,
 #        a3 = B, a4 = rows of B, a5 = columns of B,
 #        a6 = C)
-# C = A * B for row-major int32 matrices, where columns(A) = rows(B).
-# C must have room for rows(A) * columns(B) words.
+# C = A * B for row-major int32 matrices. C must have room for
+# rows(A) * columns(B) words. Ends the program with exit code 2 if
+# columns(A) != rows(B).
 #
 # C[i][j] is the dot product of row i of A (step 1) and column j of B
 # (step columns(B)); C is filled in memory order.
 matmul:
+    bne a2 a4 mm_shape
+
     addi sp sp -36
     sw ra 0(sp)
     sw s0 4(sp)
@@ -65,3 +68,7 @@ mm_done:
     lw s7 32(sp)
     addi sp sp 36
     ret
+
+mm_shape:
+    li a0 2
+    jal fail
