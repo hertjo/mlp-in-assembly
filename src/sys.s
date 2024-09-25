@@ -3,6 +3,11 @@
 # the normal calling convention (arguments from a0 on, result in a0). The
 # simulator wants the call number in a0 and the arguments from a1 on, so each
 # wrapper moves its arguments up by one register before the ecall.
+#
+# Exit codes used throughout the project:
+#   1  a file could not be opened, read, written or closed
+#   2  matrix shapes do not fit together
+#   3  wrong number of command-line arguments
 
 .globl put_int, put_char, put_str, alloc, quit, fail
 .globl file_open, file_read, file_write, file_close, print_matrix

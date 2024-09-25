@@ -31,6 +31,8 @@ main:
     sw ra 0(sp)
     sw s0 4(sp)
 
+    li t0 5                 # program name + four paths
+    bne a0 t0 bad_args
     mv s0 a1                # argv
 
     lw a0 4(s0)
@@ -68,3 +70,7 @@ main:
     lw s0 4(sp)
     addi sp sp 8
     jal quit
+
+bad_args:
+    li a0 3
+    jal fail
