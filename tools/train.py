@@ -12,6 +12,10 @@ the assembly runs it: raw pixels 0..255, 32-bit integer products and sums,
 ReLU, argmax. Because ReLU commutes with a positive scale factor, the integer
 network ranks the classes almost exactly like the float one.
 
+The scales are picked so that no image can overflow a 32-bit accumulator:
+for every output, the worst case over all inputs with pixels in 0..255 is
+checked analytically, not only on the test set.
+
 MNIST is read from a directory of the four original .gz files (IDX format).
 Use --download to fetch them; keep that directory outside the repository.
 
@@ -132,11 +136,20 @@ def float_accuracy(w1, w2, x, y):
 
 
 # ---------------------------------------------------------- quantization ----
+def worst_case_scores(q1, q2):
+    """Largest |score| any 0..255 image can produce, per output, in int64."""
+    hidden_max = 255 * np.clip(q1, 0, None).astype(np.int64).sum(axis=1)  # h_j <= this
+    return np.abs(q2.astype(np.int64)) @ hidden_max
+
+
 def quantize(w1, w2, bits1, bits2):
-    """Round both layers to signed integers of the given widths."""
+    """Round both layers to signed integers that cannot overflow int32."""
     q1 = np.round(w1 / np.abs(w1).max() * (2 ** (bits1 - 1) - 1)).astype(np.int32)
-    q2 = np.round(w2 / np.abs(w2).max() * (2 ** (bits2 - 1) - 1)).astype(np.int32)
-    return q1, q2
+    for b in range(bits2, 1, -1):
+        q2 = np.round(w2 / np.abs(w2).max() * (2 ** (b - 1) - 1)).astype(np.int32)
+        if worst_case_scores(q1, q2).max() <= INT32_MAX:
+            return q1, q2, b
+    raise SystemExit("cannot fit the output layer into int32")
 
 
 def int_forward(q1, q2, x):
@@ -187,7 +200,7 @@ def main():
     ap.add_argument("--batch", type=int, default=128)
     ap.add_argument("--lr", type=float, default=2e-3)
     ap.add_argument("--bits1", type=int, default=8, help="bits for w1 (sign included)")
-    ap.add_argument("--bits2", type=int, default=6, help="bits for w2 (sign included)")
+    ap.add_argument("--bits2", type=int, default=8, help="max bits for w2 (sign included)")
     ap.add_argument("--digits", type=int, default=32, help="test images to export")
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--out", default=os.path.join(ROOT, "data"))
@@ -202,10 +215,11 @@ def main():
     w1, w2 = train(xtr, d["train_y"].astype(np.int64), args.epochs, args.batch, args.lr, args.seed)
     print("float test accuracy:   %.2f%%" % (100 * float_accuracy(w1, w2, xte, d["test_y"])))
 
-    q1, q2 = quantize(w1, w2, args.bits1, args.bits2)
+    q1, q2, bits2 = quantize(w1, w2, args.bits1, args.bits2)
     _, scores = int_forward(q1, q2, d["test_x"].T)
     acc = float((scores.argmax(axis=0) == d["test_y"]).mean())
-    print("w1 in [%d, %d], w2 in [%d, %d]" % (q1.min(), q1.max(), q2.min(), q2.max()))
+    print("w1 in [%d, %d], w2 in [%d, %d] (%d bits), worst-case |score| %d"
+          % (q1.min(), q1.max(), q2.min(), q2.max(), bits2, worst_case_scores(q1, q2).max()))
     print("integer test accuracy: %.2f%% (10000 images)" % (100 * acc))
 
     pick = pick_digits(d["test_x"], d["test_y"], args.digits, args.seed)
