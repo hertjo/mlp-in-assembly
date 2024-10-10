@@ -8,6 +8,7 @@
 #   1  a file could not be opened, read, written or closed
 #   2  matrix shapes do not fit together
 #   3  wrong number of command-line arguments
+#   4  the label count differs from the number of images
 
 .globl put_int, put_char, put_str, alloc, quit, fail
 .globl file_open, file_read, file_write, file_close, print_matrix

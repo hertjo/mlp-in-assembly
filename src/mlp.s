@@ -1,5 +1,5 @@
 # mlp.s
-# The forward pass of the two-layer network.
+# The forward pass of the two-layer network, shared by classify.s and batch.s.
 
 .globl mlp_forward
 
