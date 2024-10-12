@@ -14,6 +14,16 @@ prediction = argmax(S)
 - There are no biases and no floating point. Every product and sum is a 32-bit integer operation.
 - `W1` holds integers in [-127, 90] and `W2` holds integers in [-31, 24].
 
+### Accuracy
+
+| | Accuracy |
+| --- | --- |
+| Float model after training (MNIST test set, 10,000 images) | 97.93% |
+| Integer model, as the assembly computes it (same 10,000 images) | 97.91% |
+| `src/batch.s` in Venus on the 32 exported test digits | 32/32 = 100.0% |
+
+The integer figure comes from a NumPy reference of the integer network. Running all 10,000 test images through the simulator would take hours, so only the 32-digit batch runs in Venus.
+
 ## Running
 
 You need Java and a jar of the [Venus RISC-V simulator](https://github.com/ThaumicMekanism/venus). Keep the jar outside the repository, and run all commands from the repository root. The flag `-ms -1` lifts the simulator's default step limit, which a full forward pass exceeds.
@@ -31,13 +41,34 @@ This prints `9`, the label of `00.bin`, and writes the scores to `scores.bin`. T
 python3 tools/matrix.py to-txt scores.bin
 ```
 
-Exit codes:
+### Classify a batch
+
+```
+src/batch.s W1 W2 DIGITS LABELS SCORES
+```
+
+```sh
+java -jar /path/to/venus.jar -ms -1 src/batch.s \
+    data/model/w1.bin data/model/w2.bin \
+    data/digits/digits.bin data/digits/labels.bin scores.bin
+```
+
+```
+predictions: 9 8 6 0 8 1 2 3 7 0 1 3 8 1 9 1 3 7 6 7 2 5 0 4 4 5 0 2 6 9 5 4
+labels:      9 8 6 0 8 1 2 3 7 0 1 3 8 1 9 1 3 7 6 7 2 5 0 4 4 5 0 2 6 9 5 4
+accuracy:    32/32 = 100.0%
+```
+
+The images are the columns of one matrix, so the two matrix products process the whole batch at once. The accuracy is truncated to one decimal.
+
+Exit codes for both programs:
 
 | Code | Meaning |
 | --- | --- |
 | 1 | A file could not be opened, read, written or closed. |
 | 2 | Matrix shapes do not fit together. |
 | 3 | Wrong number of arguments. |
+| 4 | The label count does not match the number of images (`batch.s` only). |
 
 ### Your own digit
 
