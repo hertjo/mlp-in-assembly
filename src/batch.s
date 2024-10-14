@@ -1,12 +1,13 @@
 # batch.s
 # Classifies many images in one pass and reports the accuracy.
 #
-#   batch.s W1 W2 DIGITS LABELS SCORES
+#   batch.s W1 W2 DIGITS LABELS SCORES [HIDDEN]
 #
 # DIGITS is a 784 x N matrix with one image per column and LABELS a matrix
 # with the N true digits. Since the images are columns, the two matrix
 # products of the network process the whole batch at once. The program writes
-# the 10 x N scores to SCORES and prints the predictions, the labels and the
+# the 10 x N scores to SCORES, optionally the 128 x N hidden activations
+# (after ReLU) to HIDDEN, and prints the predictions, the labels and the
 # accuracy, truncated to one decimal.
 
 .import sys.s
@@ -41,10 +42,13 @@ main:
     sw s3 16(sp)
     sw s4 20(sp)
 
-    mv s0 a0                # argc
+    mv s0 a0                # argc: 6, or 7 with the hidden output
     mv s1 a1                # argv
-    li t0 6                 # program name + five paths
+    li t0 6
+    beq s0 t0 args_ok
+    li t0 7
     bne s0 t0 bad_args
+args_ok:
 
     lw a0 4(s1)
     la a1 w1
@@ -74,6 +78,12 @@ main:
     la a4 scores
     jal mlp_forward
 
+    li t0 7
+    bne s0 t0 no_hidden
+    lw a0 24(s1)
+    la a1 hidden
+    jal save_matrix
+no_hidden:
     lw a0 20(s1)
     la a1 scores
     jal save_matrix

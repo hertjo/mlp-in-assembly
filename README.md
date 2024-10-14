@@ -44,7 +44,7 @@ python3 tools/matrix.py to-txt scores.bin
 ### Classify a batch
 
 ```
-src/batch.s W1 W2 DIGITS LABELS SCORES
+src/batch.s W1 W2 DIGITS LABELS SCORES [HIDDEN]
 ```
 
 ```sh
@@ -59,7 +59,7 @@ labels:      9 8 6 0 8 1 2 3 7 0 1 3 8 1 9 1 3 7 6 7 2 5 0 4 4 5 0 2 6 9 5 4
 accuracy:    32/32 = 100.0%
 ```
 
-The images are the columns of one matrix, so the two matrix products process the whole batch at once. The accuracy is truncated to one decimal.
+The images are the columns of one matrix, so the two matrix products process the whole batch at once. If `HIDDEN` is given, the 128 x N activations after ReLU are written there too. The accuracy is truncated to one decimal.
 
 Exit codes for both programs:
 

@@ -4,6 +4,7 @@
 # Venus simulator and local outputs
 *.jar
 scores.bin
+hidden.bin
 tests/data/roundtrip.bin
 
 # Python caches
