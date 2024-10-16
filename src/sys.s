@@ -57,8 +57,11 @@ fail:
     ecall
 
 # a0 = file_open(a0 = path, a1 = mode)
-# Returns a descriptor or -1. Mode 0 opens the file for reading, mode 1
-# creates or truncates it for writing.
+# Returns a descriptor or -1. Mode 1 creates or truncates the file for
+# writing. For reading, matio.s uses mode 5 (read and append): with the
+# simulator build used here, the plain read mode 0 rejects absolute paths,
+# while mode 5 opens relative and absolute paths alike and leaves the file
+# unchanged as long as nothing is written to it.
 file_open:
     mv a2 a1
     mv a1 a0

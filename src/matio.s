@@ -26,7 +26,7 @@ load_matrix:
     sw s3 16(sp)
 
     mv s1 a1                # record
-    li a1 0                 # open for reading
+    li a1 5                 # open for reading (see file_open in sys.s)
     jal file_open
     li t0 -1
     beq a0 t0 lm_error
