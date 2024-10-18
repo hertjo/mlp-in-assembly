@@ -22,7 +22,7 @@ prediction = argmax(S)
 | Integer model, as the assembly computes it (same 10,000 images) | 97.91% |
 | `src/batch.s` in Venus on the 32 exported test digits | 32/32 = 100.0% |
 
-The integer figure comes from a NumPy reference of the integer network. Running all 10,000 test images through the simulator would take hours, so only the 32-digit batch runs in Venus.
+The integer figure comes from a NumPy reference of the integer network. `tools/check.py` confirms that the assembly produces exactly the same hidden activations and scores, bit for bit, on every exported digit. Running all 10,000 test images through the simulator would take hours, so only the 32-digit batch runs in Venus.
 
 ## Running
 
@@ -80,3 +80,34 @@ java -jar /path/to/venus.jar -ms -1 src/classify.s \
 ```
 
 The `png` command converts the image to grayscale and inverts it if the background is light. It then crops the image to the ink, scales it into a 20x20 box and centres it on a 28x28 canvas, the same framing as MNIST. `show` prints the result as text art.
+
+## Tests and verification
+
+```sh
+pip install numpy pillow
+python3 tools/check.py --venus /path/to/venus.jar
+```
+
+`check.py` does three things:
+
+- It runs every program in `tests/` and compares the output with the `#>` lines. `test_matmul_shape.s` must exit with code 2.
+- It runs `batch.s` on the 32 digits and requires the hidden activations, scores and predictions to equal the NumPy reference bit for bit.
+- It runs `classify.s` on each digit separately. Use `--no-singles` to skip this step, which takes a few minutes.
+
+A single test can also be run directly:
+
+```sh
+java -jar /path/to/venus.jar tests/test_dot.s
+```
+
+The programs also pass the simulator's calling-convention checker (`-cc`).
+
+## Retraining
+
+MNIST is not stored in the repository. `train.py` reads the four original `.gz` files from a folder of your choice, and `--download` fetches them from a public mirror first:
+
+```sh
+python3 tools/train.py --mnist ~/datasets/mnist --download
+```
+
+This overwrites `data/model/` and `data/digits/` and prints the float and integer test accuracy. Options include `--epochs`, `--lr`, `--bits1`, `--bits2`, `--digits` (how many test images to export) and `--seed`.
