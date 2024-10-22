@@ -1,6 +1,10 @@
 # MLP in RISC-V Assembly
 
+![Forward pass of the RISC-V MLP on the test digits](assets/demo.gif)
+
 A small neural network that classifies handwritten digits (MNIST), with the whole forward pass written in RISC-V assembly: file I/O, matrix products, ReLU and argmax. The programs run in the Venus RISC-V simulator. The network is trained in NumPy with `tools/train.py` and exported as integer matrices that the assembly reads directly.
+
+The GIF above comes from a real run of `src/batch.s` in Venus. For each image it shows the input, the 128 hidden activations after ReLU, the 10 output scores and the predicted digit.
 
 ## The network
 
@@ -111,3 +115,11 @@ python3 tools/train.py --mnist ~/datasets/mnist --download
 ```
 
 This overwrites `data/model/` and `data/digits/` and prints the float and integer test accuracy. Options include `--epochs`, `--lr`, `--bits1`, `--bits2`, `--digits` (how many test images to export) and `--seed`.
+
+## Regenerating the GIF
+
+```sh
+python3 tools/visualize.py --venus /path/to/venus.jar
+```
+
+The script runs `batch.s` in Venus with the hidden output enabled, then draws the first 12 digits (`--count`) from the matrices that Venus wrote. The output goes to `assets/demo.gif`. `--java` or the `JAVA` environment variable selects the Java executable.
