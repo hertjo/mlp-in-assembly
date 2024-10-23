@@ -28,6 +28,38 @@ prediction = argmax(S)
 
 The integer figure comes from a NumPy reference of the integer network. `tools/check.py` confirms that the assembly produces exactly the same hidden activations and scores, bit for bit, on every exported digit. Running all 10,000 test images through the simulator would take hours, so only the 32-digit batch runs in Venus.
 
+### Training and quantization
+
+`tools/train.py` trains the float network on the 60,000 MNIST training images: softmax cross-entropy, Adam, mini-batches of 128, 12 epochs with a cosine learning-rate decay, pixels scaled to [0, 1]. A fixed seed makes the run reproducible.
+
+After training, each weight matrix is scaled and rounded to integers. ReLU commutes with a positive scale factor, so the integer network ranks the classes almost exactly as the float network does. Feeding raw 0..255 pixels into the integer network changes only the overall scale of the scores.
+
+The script then checks for overflow analytically. Pixels are non-negative, so hidden unit `j` is at most `255 · Σ max(W1[j,i], 0)`. That bound gives a worst case for every output score. `W1` uses 8 bits, and `W2` takes the most bits (up to 8) for which no input image can push a score past the int32 range. With the current weights this is 6 bits, and the worst case is 1,321,465,590, below 2^31 - 1.
+
+## Layout
+
+| Path | Contents |
+| --- | --- |
+| `src/classify.s` | Classifies one image: writes the 10 scores and prints the predicted digit. |
+| `src/batch.s` | Classifies a batch in one pass and prints the predictions, labels and accuracy. |
+| `src/mlp.s` | `mlp_forward`: the two layers, shared by both programs. |
+| `src/matmul.s`, `src/dot.s` | Integer matrix product built on a strided dot product. |
+| `src/relu.s` | In-place ReLU. |
+| `src/argmax.s` | `argmax` over a vector and `argmax_cols` over the columns of a matrix. |
+| `src/matio.s` | `load_matrix` and `save_matrix` for the binary matrix format. |
+| `src/sys.s` | Wrappers for the simulator's environment calls, the heap allocator and `print_matrix`. |
+| `tests/` | One program per function. Each lists its expected output in `#>` comment lines. |
+| `data/model/` | `w1.bin`, `w2.bin`: the trained integer weights. |
+| `data/digits/` | 32 MNIST test images as `digits.bin` (784 x 32) and `labels.bin` (1 x 32), plus each image on its own as `00.bin` ... `31.bin`. `labels.txt` lists the labels. |
+| `tools/train.py` | Trains, quantizes and exports the model and the test digits. |
+| `tools/matrix.py` | Converts between binary and text matrices, and converts a PNG into an input column. |
+| `tools/check.py` | Runs all tests and both programs in Venus and compares the results with NumPy. |
+| `tools/visualize.py` | Renders `assets/demo.gif` from a Venus run of `batch.s`. |
+
+### Matrix format
+
+A matrix file holds two little-endian int32 values (rows, columns), followed by the elements as little-endian int32 in row-major order. In memory, the assembly describes a matrix with a 12-byte record: rows, columns, and the address of the first element. The record starts with the same two words as the file header, so `load_matrix` reads the header straight into the record.
+
 ## Running
 
 You need Java and a jar of the [Venus RISC-V simulator](https://github.com/ThaumicMekanism/venus). Keep the jar outside the repository, and run all commands from the repository root. The flag `-ms -1` lifts the simulator's default step limit, which a full forward pass exceeds.
